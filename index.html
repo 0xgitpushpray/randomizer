@@ -4,71 +4,282 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randomizer</title>
+<meta name="description" content="Pick from a list, draw a number, flip a coin, roll a die.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 480px; margin: 2rem auto; padding: 0 1rem; background: #f6f7f9; color: #222; }
-  h1 { text-align: center; }
-  section { background: #fff; border-radius: 10px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-  h2 { margin-top: 0; font-size: 1.1rem; }
-  textarea, input { width: 100%; box-sizing: border-box; padding: .5rem; font: inherit; margin-bottom: .5rem; }
-  .row { display: flex; gap: .5rem; }
-  button { padding: .6rem 1rem; font: inherit; border: 0; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
-  button:hover { background: #1d4ed8; }
-  .result { margin-top: .75rem; font-size: 1.6rem; font-weight: 600; text-align: center; min-height: 2rem; }
+  :root {
+    --ink: oklch(0.2 0.07 268);
+    --ink-2: oklch(0.27 0.08 268);
+    --vermilion: oklch(0.68 0.19 38);
+    --vermilion-deep: oklch(0.22 0.06 30);
+    --cobalt: oklch(0.5 0.2 266);
+    --cobalt-light: oklch(0.97 0.02 95);
+    --butter: oklch(0.89 0.16 95);
+    --butter-deep: oklch(0.22 0.06 95);
+    --font: "Bricolage Grotesque", ui-rounded, "Segoe UI", system-ui, sans-serif;
+    --ease: cubic-bezier(.16, 1, .3, 1);
+  }
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body {
+    margin: 0; min-height: 100vh;
+    font-family: var(--font); font-optical-sizing: auto;
+    background: var(--ink); color: var(--cobalt-light);
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--butter); color: var(--butter-deep); }
+  ::placeholder { opacity: .6; color: inherit; }
+  :focus-visible { outline: 3px solid var(--butter); outline-offset: 3px; border-radius: 6px; }
+  * { scrollbar-width: thin; scrollbar-color: currentColor transparent; }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: clamp(20px, 4vw, 48px) 16px 56px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: clamp(20px, 4vw, 40px); }
+  h1 { margin: 0; font-size: clamp(2.6rem, 9vw, 5.5rem); font-weight: 800; letter-spacing: -.035em; line-height: .9; }
+  h1 span { color: var(--vermilion); }
+  header p { margin: 0; max-width: 22ch; text-align: right; opacity: .75; font-size: .95rem; text-wrap: balance; }
+
+  .grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
+  @media (min-width: 860px) {
+    .grid { grid-template-columns: 1.15fr 1fr; grid-template-rows: auto auto; }
+    .list { grid-row: 1 / span 2; }
+  }
+  .panel { border-radius: 28px; padding: clamp(18px, 3vw, 30px); display: flex; flex-direction: column; gap: 14px; position: relative; overflow: hidden; }
+  .panel h2 { margin: 0; font-size: 1.15rem; font-weight: 600; letter-spacing: -.01em; }
+  .panel.list   { background: var(--vermilion); color: var(--vermilion-deep); }
+  .panel.number { background: var(--cobalt);    color: var(--cobalt-light); }
+  .panel.toss   { background: var(--butter);    color: var(--butter-deep); }
+
+  textarea, input {
+    width: 100%; font: inherit; color: inherit; border: 0; border-radius: 16px;
+    background: color-mix(in oklch, currentColor 11%, transparent);
+    padding: .8rem 1rem;
+  }
+  textarea { resize: vertical; min-height: 7.5rem; line-height: 1.5; }
+  textarea:focus-visible, input:focus-visible { outline-color: currentColor; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer; border: 0; border-radius: 999px;
+    padding: .75rem 1.4rem; min-height: 46px;
+    background: currentColor; transition: transform .25s var(--ease), box-shadow .25s var(--ease), opacity .2s;
+    box-shadow: 0 6px 14px -6px color-mix(in oklch, currentColor 60%, transparent);
+  }
+  button > span { color: var(--btn-ink); }
+  .list button   { --btn-ink: var(--vermilion); }
+  .number button { --btn-ink: var(--cobalt); }
+  .toss button   { --btn-ink: var(--butter); }
+  button.ghost { background: transparent; box-shadow: inset 0 0 0 2px currentColor; }
+  button.ghost > span { color: inherit; }
+  button:hover:not(:disabled) { transform: translateY(-2px); }
+  button:active:not(:disabled) { transform: translateY(1px) scale(.98); }
+  button:disabled { opacity: .5; cursor: progress; }
+
+  .result { font-weight: 800; letter-spacing: -.03em; line-height: 1; min-height: 1.1em; overflow-wrap: anywhere; text-wrap: balance; }
+  .list .result { font-size: clamp(2.2rem, 6vw, 4rem); }
+  .number .result { font-size: clamp(3.4rem, 10vw, 6.5rem); font-variant-numeric: tabular-nums; }
+  .result.hint { font-size: 1.1rem; font-weight: 400; letter-spacing: 0; opacity: .75; }
+  .result.land { animation: land .6s var(--ease); }
+  @keyframes land { from { transform: translateY(.3em) scale(.92); filter: blur(8px); opacity: 0; } }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; min-height: 2rem; }
+  .chips li { padding: .3rem .8rem; border-radius: 999px; font-size: .9rem; box-shadow: inset 0 0 0 1.5px color-mix(in oklch, currentColor 45%, transparent); transition: background .12s, color .12s, transform .25s var(--ease); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chips li.on { background: var(--vermilion-deep); color: var(--vermilion); box-shadow: none; transform: scale(1.06); }
+
+  .range { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: end; }
+  .range label { display: grid; gap: 6px; font-size: .85rem; opacity: .85; }
+  .range input { font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .range i { font-style: normal; font-size: 1.5rem; padding-bottom: .7rem; opacity: .6; }
+
+  .toss-stage { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .toy { display: grid; justify-items: center; gap: 12px; padding: 18px 8px 14px; border-radius: 22px; background: color-mix(in oklch, currentColor 8%, transparent); }
+  .toy button { width: 100%; max-width: 12rem; }
+  .coin { width: 96px; height: 96px; perspective: 500px; }
+  .coin-in { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; }
+  .face { position: absolute; inset: 0; border-radius: 50%; display: grid; place-items: center; backface-visibility: hidden; font-size: 2.6rem; font-weight: 800; background: var(--butter-deep); color: var(--butter); box-shadow: inset 0 0 0 5px var(--butter), inset 0 0 0 8px var(--butter-deep); }
+  .face.tails { transform: rotateY(180deg); background: var(--vermilion); color: var(--vermilion-deep); box-shadow: inset 0 0 0 5px var(--vermilion-deep), inset 0 0 0 8px var(--vermilion); }
+  .die { width: 96px; height: 96px; }
+  .die rect { fill: var(--butter-deep); }
+  .die circle { fill: var(--butter); opacity: 0; transition: opacity .1s; }
+  .die circle.p { opacity: 1; }
+  .die-in { transform-origin: center; }
+  .toss .result { font-size: clamp(1.8rem, 4vw, 2.6rem); }
+
+  @media (max-width: 520px) {
+    header p { display: none; }
+    .toss-stage { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
 <body>
-<h1>🎲 Randomizer</h1>
+<div class="wrap">
+  <header>
+    <h1>Random<span>izer</span></h1>
+    <p>Let chance decide. Four small machines, no wrong answers.</p>
+  </header>
 
-<section>
-  <h2>Pick from a list</h2>
-  <textarea id="items" rows="5" placeholder="One item per line"></textarea>
-  <button onclick="pickItem()">Pick one</button>
-  <button onclick="shuffleItems()">Shuffle</button>
-  <div class="result" id="listResult"></div>
-</section>
+  <main class="grid">
+    <section class="panel list" aria-labelledby="h-list">
+      <h2 id="h-list">Pick from a list</h2>
+      <textarea id="items" rows="5" placeholder="One item per line&#10;Pizza&#10;Tacos&#10;Ramen" aria-label="List items, one per line"></textarea>
+      <ul class="chips" id="chips" aria-hidden="true"></ul>
+      <div class="actions">
+        <button id="pick"><span>Pick one</span></button>
+        <button id="shuffle" class="ghost"><span>Shuffle</span></button>
+      </div>
+      <div class="result hint" id="listResult" aria-live="polite">Add some items to begin</div>
+    </section>
 
-<section>
-  <h2>Random number</h2>
-  <div class="row">
-    <input id="min" type="number" value="1" aria-label="Minimum">
-    <input id="max" type="number" value="100" aria-label="Maximum">
-  </div>
-  <button onclick="pickNumber()">Generate</button>
-  <div class="result" id="numResult"></div>
-</section>
+    <section class="panel number" aria-labelledby="h-num">
+      <h2 id="h-num">Random number</h2>
+      <div class="range">
+        <label>From <input id="min" type="number" value="1" inputmode="numeric"></label>
+        <i aria-hidden="true">–</i>
+        <label>To <input id="max" type="number" value="100" inputmode="numeric"></label>
+      </div>
+      <div class="actions"><button id="gen"><span>Generate</span></button></div>
+      <div class="result" id="numResult" aria-live="polite">—</div>
+    </section>
 
-<section>
-  <h2>Coin flip &amp; dice</h2>
-  <button onclick="flip()">Flip coin</button>
-  <button onclick="roll()">Roll d6</button>
-  <div class="result" id="miscResult"></div>
-</section>
+    <section class="panel toss" aria-labelledby="h-toss">
+      <h2 id="h-toss">Coin &amp; dice</h2>
+      <div class="toss-stage">
+        <div class="toy">
+          <div class="coin" aria-hidden="true"><div class="coin-in" id="coin"><div class="face">H</div><div class="face tails">T</div></div></div>
+          <button id="flip"><span>Flip coin</span></button>
+        </div>
+        <div class="toy">
+          <svg class="die" viewBox="0 0 100 100" aria-hidden="true"><g class="die-in" id="die">
+            <rect x="4" y="4" width="92" height="92" rx="20"/>
+            <circle cx="30" cy="30" r="7"/><circle cx="70" cy="30" r="7"/>
+            <circle cx="30" cy="50" r="7"/><circle cx="50" cy="50" r="7"/><circle cx="70" cy="50" r="7"/>
+            <circle cx="30" cy="70" r="7"/><circle cx="70" cy="70" r="7"/>
+          </g></svg>
+          <button id="roll"><span>Roll d6</span></button>
+        </div>
+      </div>
+      <div class="result hint" id="miscResult" aria-live="polite">Flip or roll</div>
+    </section>
+  </main>
+</div>
 
 <script>
   const $ = id => document.getElementById(id);
-  const rand = n => Math.floor(Math.random() * n);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const rand = n => {
+    const a = new Uint32Array(1), lim = 4294967296 - (4294967296 % n);
+    do crypto.getRandomValues(a); while (a[0] >= lim);
+    return a[0] % n;
+  };
   const getItems = () => $('items').value.split('\n').map(s => s.trim()).filter(Boolean);
 
-  function pickItem() {
+  function show(el, text, hint) {
+    el.textContent = text;
+    el.classList.toggle('hint', !!hint);
+    el.classList.remove('land'); void el.offsetWidth;
+    if (!hint) el.classList.add('land');
+  }
+  const busy = (ids, on) => ids.forEach(id => $(id).disabled = on);
+
+  /* ---- list ---- */
+  function renderChips(active = -1) {
+    $('chips').innerHTML = '';
+    getItems().forEach((t, i) => {
+      const li = document.createElement('li');
+      li.textContent = t;
+      if (i === active) li.className = 'on';
+      $('chips').append(li);
+    });
+  }
+  $('items').addEventListener('input', () => renderChips());
+
+  async function pickItem() {
     const items = getItems();
-    $('listResult').textContent = items.length ? items[rand(items.length)] : 'Add some items first';
+    if (!items.length) return show($('listResult'), 'Add some items first', true);
+    const win = rand(items.length), lis = $('chips').children;
+    busy(['pick', 'shuffle'], true);
+    if (!reduce && items.length > 1) {
+      let prev = -1, steps = 14 + rand(6);
+      for (let s = 0; s < steps; s++) {
+        let i; do i = rand(items.length); while (i === prev);
+        if (prev >= 0) lis[prev].classList.remove('on');
+        lis[i].classList.add('on'); prev = i;
+        await wait(50 + s * s * 1.3);
+      }
+      lis[prev].classList.remove('on');
+    }
+    renderChips(win);
+    show($('listResult'), items[win]);
+    busy(['pick', 'shuffle'], false);
   }
   function shuffleItems() {
     const items = getItems();
+    if (!items.length) return show($('listResult'), 'Add some items first', true);
     for (let i = items.length - 1; i > 0; i--) {
       const j = rand(i + 1);
       [items[i], items[j]] = [items[j], items[i]];
     }
     $('items').value = items.join('\n');
-    $('listResult').textContent = items.length ? 'Shuffled!' : 'Add some items first';
+    renderChips();
+    show($('listResult'), 'Shuffled', true);
   }
-  function pickNumber() {
+
+  /* ---- number ---- */
+  async function pickNumber() {
     let min = Math.ceil(+$('min').value), max = Math.floor(+$('max').value);
+    if (!$('min').value || !$('max').value || !isFinite(min) || !isFinite(max)) return show($('numResult'), 'Enter two numbers', true);
     if (min > max) [min, max] = [max, min];
-    $('numResult').textContent = min + rand(max - min + 1);
+    const out = min + rand(max - min + 1);
+    busy(['gen'], true);
+    if (!reduce && max > min) {
+      const end = performance.now() + 650;
+      while (performance.now() < end) { $('numResult').textContent = min + rand(max - min + 1); await wait(45); }
+    }
+    show($('numResult'), out);
+    busy(['gen'], false);
   }
-  const flip = () => $('miscResult').textContent = rand(2) ? 'Heads' : 'Tails';
-  const roll = () => $('miscResult').textContent = '🎲 ' + (rand(6) + 1);
+
+  /* ---- coin & dice ---- */
+  let coinAngle = 0;
+  async function flip() {
+    const heads = rand(2) === 0;
+    busy(['flip', 'roll'], true);
+    const from = coinAngle;
+    coinAngle = Math.ceil(from / 360) * 360 + 1440 + (heads ? 0 : 180);
+    if (!reduce) await $('coin').animate(
+      [{ transform: `rotateY(${from}deg) translateY(0)` },
+       { transform: `rotateY(${(from + coinAngle) / 2}deg) translateY(-40px)`, offset: .5 },
+       { transform: `rotateY(${coinAngle}deg) translateY(0)` }],
+      { duration: 1100, easing: 'cubic-bezier(.16,1,.3,1)' }).finished;
+    $('coin').style.transform = `rotateY(${coinAngle}deg)`;
+    show($('miscResult'), heads ? 'Heads' : 'Tails');
+    busy(['flip', 'roll'], false);
+  }
+  function setDie(n) {
+    const layout = { 1: [3], 2: [0, 6], 3: [0, 3, 6], 4: [0, 1, 5, 6], 5: [0, 1, 3, 5, 6], 6: [0, 1, 2, 4, 5, 6] };
+    [...$('die').querySelectorAll('circle')].forEach((c, i) => c.classList.toggle('p', layout[n].includes(i)));
+  }
+  async function roll() {
+    const n = rand(6) + 1;
+    busy(['flip', 'roll'], true);
+    if (!reduce) {
+      const spin = $('die').animate([{ transform: 'rotate(0)' }, { transform: 'rotate(360deg)' }], { duration: 700, easing: 'cubic-bezier(.16,1,.3,1)' });
+      for (let i = 0; i < 9; i++) { setDie(rand(6) + 1); await wait(60 + i * 12); }
+      await spin.finished;
+    }
+    setDie(n);
+    show($('miscResult'), `Rolled a ${n}`);
+    busy(['flip', 'roll'], false);
+  }
+  setDie(6);
+
+  $('pick').onclick = pickItem; $('shuffle').onclick = shuffleItems;
+  $('gen').onclick = pickNumber; $('flip').onclick = flip; $('roll').onclick = roll;
 </script>
 </body>
 </html>
