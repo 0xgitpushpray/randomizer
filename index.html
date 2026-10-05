@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Randomizer</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 480px; margin: 2rem auto; padding: 0 1rem; background: #f6f7f9; color: #222; }
+  h1 { text-align: center; }
+  section { background: #fff; border-radius: 10px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  h2 { margin-top: 0; font-size: 1.1rem; }
+  textarea, input { width: 100%; box-sizing: border-box; padding: .5rem; font: inherit; margin-bottom: .5rem; }
+  .row { display: flex; gap: .5rem; }
+  button { padding: .6rem 1rem; font: inherit; border: 0; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
+  button:hover { background: #1d4ed8; }
+  .result { margin-top: .75rem; font-size: 1.6rem; font-weight: 600; text-align: center; min-height: 2rem; }
+</style>
+</head>
+<body>
+<h1>🎲 Randomizer</h1>
+
+<section>
+  <h2>Pick from a list</h2>
+  <textarea id="items" rows="5" placeholder="One item per line"></textarea>
+  <button onclick="pickItem()">Pick one</button>
+  <button onclick="shuffleItems()">Shuffle</button>
+  <div class="result" id="listResult"></div>
+</section>
+
+<section>
+  <h2>Random number</h2>
+  <div class="row">
+    <input id="min" type="number" value="1" aria-label="Minimum">
+    <input id="max" type="number" value="100" aria-label="Maximum">
+  </div>
+  <button onclick="pickNumber()">Generate</button>
+  <div class="result" id="numResult"></div>
+</section>
+
+<section>
+  <h2>Coin flip &amp; dice</h2>
+  <button onclick="flip()">Flip coin</button>
+  <button onclick="roll()">Roll d6</button>
+  <div class="result" id="miscResult"></div>
+</section>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const rand = n => Math.floor(Math.random() * n);
+  const getItems = () => $('items').value.split('\n').map(s => s.trim()).filter(Boolean);
+
+  function pickItem() {
+    const items = getItems();
+    $('listResult').textContent = items.length ? items[rand(items.length)] : 'Add some items first';
+  }
+  function shuffleItems() {
+    const items = getItems();
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = rand(i + 1);
+      [items[i], items[j]] = [items[j], items[i]];
+    }
+    $('items').value = items.join('\n');
+    $('listResult').textContent = items.length ? 'Shuffled!' : 'Add some items first';
+  }
+  function pickNumber() {
+    let min = Math.ceil(+$('min').value), max = Math.floor(+$('max').value);
+    if (min > max) [min, max] = [max, min];
+    $('numResult').textContent = min + rand(max - min + 1);
+  }
+  const flip = () => $('miscResult').textContent = rand(2) ? 'Heads' : 'Tails';
+  const roll = () => $('miscResult').textContent = '🎲 ' + (rand(6) + 1);
+</script>
+</body>
+</html>
